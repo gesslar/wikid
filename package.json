@@ -1,0 +1,61 @@
+{
+  "name": "@gesslar/wiki-your-media",
+  "version": "1.0.0",
+  "description": "If Salt'n'Pepa wrote a MediaWiki auth and util package in Node.js",
+  "type": "module",
+  "main": "./src/index.js",
+  "module": "./src/index.js",
+  "exports": {
+    ".": {
+      "import": "./src/index.js"
+    }
+  },
+  "files": [
+    "src",
+    "README.md",
+    "UNLICENSE.txt"
+  ],
+  "scripts": {
+    "dev": "node src/index.js",
+    "types:build": "tsc -p tsconfig.types.json",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "submit": "npm publish --access public",
+    "update": "npx npm-check-updates -u && npm install",
+    "pr": "gt submit --publish --restack --ai",
+    "release:patch": "npm version patch && npm publish",
+    "release:minor": "npm version minor && npm publish",
+    "release:major": "npm version major && npm publish"
+  },
+  "keywords": [
+    "wiki",
+    "media",
+    "utilities",
+    "esm",
+    "push",
+    "it",
+    "real",
+    "good"
+  ],
+  "author": "gesslar",
+  "license": "Unlicense",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gesslar/wiki-your-media.git"
+  },
+  "homepage": "https://github.com/gesslar/wiki-your-media#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@stylistic/eslint-plugin": "^2.0.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-jsdoc": "^50.0.0",
+    "globals": "^15.0.0"
+  },
+  "dependencies": {
+    "@gesslar/toolkit": "^0.7.0",
+    "node-fetch": "^3.3.2"
+  }
+}
