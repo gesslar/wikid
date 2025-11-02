@@ -24,9 +24,9 @@
     "submit": "npm publish --access public",
     "update": "npx npm-check-updates -u && npm install",
     "pr": "gt submit --publish --restack --ai",
-    "release:patch": "npm version patch",
-    "release:minor": "npm version minor",
-    "release:major": "npm version major"
+    "patch": "npm version patch",
+    "minor": "npm version minor",
+    "major": "npm version major"
   },
   "keywords": [
     "wiki",
