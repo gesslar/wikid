@@ -1,6 +1,6 @@
 {
   "name": "@gesslar/wiki-your-media",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "If Salt'n'Pepa wrote a MediaWiki auth and util package in Node.js",
   "type": "module",
   "main": "./src/index.js",
@@ -24,9 +24,9 @@
     "submit": "npm publish --access public",
     "update": "npx npm-check-updates -u && npm install",
     "pr": "gt submit --publish --restack --ai",
-    "release:patch": "npm version patch && npm publish",
-    "release:minor": "npm version minor && npm publish",
-    "release:major": "npm version major && npm publish"
+    "release:patch": "npm version patch",
+    "release:minor": "npm version minor",
+    "release:major": "npm version major"
   },
   "keywords": [
     "wiki",
