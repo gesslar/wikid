@@ -1,6 +1,6 @@
 {
   "name": "@gesslar/wikid",
-  "version": "1.0.2",
+  "version": "2.0.0",
   "description": "If Salt'n'Pepa wrote a MediaWiki auth package in Node.js",
   "type": "module",
   "main": "./src/index.js",
