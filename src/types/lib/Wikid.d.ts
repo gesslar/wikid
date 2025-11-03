@@ -1,6 +1,6 @@
-export default class MediaWikiUploader {
+export default class Wikid {
     /**
-     * Create a new MediaWiki uploader instance
+     * Create a new Wikid instance
      *
      * @param {object} options - Configuration options
      * @param {string} options.baseUrl - Base URL of the MediaWiki instance
@@ -17,10 +17,13 @@ export default class MediaWikiUploader {
     /**
      * Authenticate with MediaWiki and obtain session tokens
      *
-     * @returns {Promise<MediaWikiUploader>} Returns self for chaining
+     * @returns {Promise<{ok: boolean, error?: Error}>} Result object
      * @throws {Error} When authentication fails or credentials are invalid
      */
-    login(): Promise<MediaWikiUploader>;
+    login(): Promise<{
+        ok: boolean;
+        error?: Error;
+    }>;
     /**
      * Clear authentication state and logout
      */
@@ -38,11 +41,12 @@ export default class MediaWikiUploader {
      * Perform GET request to MediaWiki API
      *
      * @param {string} path - API endpoint path
+     * @param {object} [params] - Query parameters object
      * @param {symbol} [override] - Internal override for CSRF token fetch
      * @returns {Promise<Response>} Fetch response object
      * @throws {Error} When request fails
      */
-    get(path: string, override?: symbol): Promise<Response>;
+    get(path: string, params?: object, override?: symbol): Promise<Response>;
     #private;
 }
-//# sourceMappingURL=MediaWikiUploader.d.ts.map
+//# sourceMappingURL=Wikid.d.ts.map

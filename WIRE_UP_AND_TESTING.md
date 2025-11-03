@@ -63,62 +63,12 @@ Before you write a single test, **audit your implementation**:
 
 ### **Step 2: Wire Up the Class to `index.js`**
 
-#### **Individual Export (Required)**
-
-Add your new class to the individual exports section:
+Add your new class to the exports:
 
 ```javascript
 // src/index.js
 export { default as YourNewClass } from "./lib/YourNewClass.js"
 ```
-
-#### **Semantic Bundle Export (Recommended)**
-
-Add your class to the appropriate semantic bundle in `/src/bundles/`:
-
-```javascript
-// src/bundles/YourDomainSystem.js
-export {default as YourNewClass} from "../lib/YourNewClass.js"
-```
-
-**Available Semantic Bundles:**
-
-- 📁 **`FileSystem`** - File and directory operations (FileObject, DirectoryObject, FS)
-- ⚡ **`ActionSystem`** - Action orchestration framework (Action, ActionBuilder, ActionRunner, Hooks, Piper)
-- 📊 **`DataSystem`** - Data manipulation and validation (Data, Valid, Collection, Cache, Type)
-- 🚨 **`ErrorSystem`** - Error handling and reporting (Sass, Tantrum)
-- 📋 **`ContractSystem`** - Contract negotiation and schema validation (Contract, Terms, Schemer)
-- 🖥️ **`LoggingSystem`** - Logging and terminal utilities (Glog, Term, Util)
-
-**Create New Bundle if Needed:**
-
-If your class doesn't fit existing bundles, create a new semantic bundle:
-
-```javascript
-// src/bundles/YourNewDomainSystem.js
-/**
- * Your New Domain System Bundle
- *
- * Provides [domain description] including:
- * - YourClass: Brief description of what it does
- */
-
-export {default as YourClass} from "../lib/YourClass.js"
-```
-
-Then add to main index.js:
-
-```javascript
-// Export the new bundle alongside others
-export * as YourNewDomainSystem from "./bundles/YourNewDomainSystem.js"
-```
-
-**Naming Convention**:
-
-- Classes: `PascalCase` (FileObject, Sass, Glog)
-- Utilities: `PascalCase` (Util, Data, FS)
-- Bundles: `PascalCase` + "System" (ActionSystem, FileSystem)
-- Keep it consistent with existing patterns
 
 ### **Step 3: Keep the Type Definitions in Sync**
 
@@ -178,28 +128,13 @@ Create `tests/unit/YourNewClass.test.js`:
 import { describe, it } from "node:test"
 import assert from "node:assert/strict"
 
-// Test both import styles
 import { YourNewClass } from "../../src/index.js"
-import { YourDomainSystem } from "../../src/index.js"
 
 describe("YourNewClass", () => {
-  describe("import compatibility", () => {
-    it("works with individual import", () => {
-      // Test individual class import
-      const result = YourNewClass.methodName("input")
-      assert.equal(result, "expected")
-    })
-
-    it("works with semantic bundle import", () => {
-      // Test semantic bundle import
-      const {YourNewClass: BundledClass} = YourDomainSystem
-      const result = BundledClass.methodName("input")
-      assert.equal(result, "expected")
-    })
-
-    it("both import styles reference same class", () => {
-      // Verify they're the same constructor
-      assert.equal(YourNewClass, YourDomainSystem.YourNewClass)
+  describe("import", () => {
+    it("can be imported from package", () => {
+      assert.ok(YourNewClass)
+      assert.equal(typeof YourNewClass, "function")
     })
   })
 
@@ -370,54 +305,5 @@ Remember: **Good tests are like good sass - they catch problems early and give y
 
 ---
 
-## 🎨 **Semantic Bundle Usage Examples**
-
-### **Import Patterns Available to Users:**
-
-```javascript
-// ==========================================
-// SEMANTIC BUNDLES - Clean domain imports
-// ==========================================
-
-// Get everything for file operations
-import {FileSystem} from "@gesslar/toolkit"
-const file = new FileSystem.FileObject("data.json")
-const dir = new FileSystem.DirectoryObject("./src")
-const files = await FileSystem.FS.getFiles("*.js")
-
-// Get complete action system
-import {ActionSystem} from "@gesslar/toolkit"
-class MyAction extends ActionSystem.Action { /* ... */ }
-const builder = new ActionSystem.ActionBuilder(action)
-const piper = new ActionSystem.Piper()
-
-// Get data manipulation tools
-import {DataSystem} from "@gesslar/toolkit"
-DataSystem.Valid.assert(condition, "message")
-const type = DataSystem.Data.typeOf(value)
-const results = DataSystem.Collection.asyncMap(items, processor)
-
-// ==========================================
-// GRANULAR IMPORTS - Individual classes
-// ==========================================
-
-// Traditional approach still works
-import {FileObject, Action, Data, Sass} from "@gesslar/toolkit"
-
-// ==========================================
-// MIX AND MATCH - Best of both worlds
-// ==========================================
-
-// Use bundles for groups, individuals for specifics
-import {ActionSystem, Sass} from "@gesslar/toolkit"
-```
-
-### **When to Use Which Import Style:**
-
-- 📦 **Semantic Bundles**: When you need multiple related classes from the same domain
-- 🎯 **Individual Imports**: When you only need one or two specific classes
-- 🔀 **Mixed**: When you need a bundle plus some individual classes from other domains
-
----
 
 *Now go forth and test with confidence! And remember - TESTING.txt is still fucking gold.* ✨

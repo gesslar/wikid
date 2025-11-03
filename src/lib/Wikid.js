@@ -1,20 +1,20 @@
 /**
- * MediaWiki API Client for Bot Operations
+ * Wikid - MediaWiki API Client for Bot Operations
  *
- * A comprehensive MediaWiki uploader that handles authentication,
+ * A comprehensive MediaWiki client that handles authentication,
  * session management, and API interactions for bot operations.
  *
  * @example
  * ```javascript
- * const uploader = new MediaWikiUploader({
+ * const wikid = new Wikid({
  *   baseUrl: "https://wiki.example.com",
  *   botUsername: "MyBot",
  *   botPassword: "password123",
  *   private: false
  * })
  *
- * await uploader.login()
- * const response = await uploader.post("api.php", {
+ * await wikid.login()
+ * const response = await wikid.post("api.php", {
  *   action: "edit",
  *   title: "Test Page",
  *   text: "Hello World"
@@ -22,27 +22,25 @@
  * ```
  */
 
-import {Data, Valid} from "@gesslar/toolkit"
+import {Data, Sass, Valid} from "@gesslar/toolkit"
 import fetch, {Headers,FormData} from "node-fetch"
 
-const tokenPath = "api.php?action=query&meta=tokens&type=login&format=json"
-const editTokenPath = "api.php?action=query&meta=tokens&format=json"
 const METHODS = Object.freeze({
   POST: "POST",
   GET: "GET",
 })
 
-export default class MediaWikiUploader {
+export default class Wikid {
   #baseUrl
   #botUsername
   #botPassword
   #cookies = []
-  #loginToken
-  #csrftoken
+  #tokenCache = new Map()
   #private
+  #overrideLoginCheck
 
   /**
-   * Create a new MediaWiki uploader instance
+   * Create a new Wikid instance
    *
    * @param {object} options - Configuration options
    * @param {string} options.baseUrl - Base URL of the MediaWiki instance
@@ -63,35 +61,25 @@ export default class MediaWikiUploader {
   /**
    * Authenticate with MediaWiki and obtain session tokens
    *
-   * @returns {Promise<MediaWikiUploader>} Returns self for chaining
+   * @returns {Promise<{ok: boolean, error?: Error}>} Result object
    * @throws {Error} When authentication fails or credentials are invalid
    */
   async login() {
     try {
       this.#validate()
 
-      this.#loginToken = await this.#getLoginToken()
+      const loginToken = await this.#getLoginToken()
 
-      const response = await this.post(
+      const json = await this.post(
         "api.php",
         {
           action: "login",
           lgname: this.#botUsername,
           lgpassword: this.#botPassword,
-          lgtoken: this.#loginToken,
+          lgtoken: loginToken,
           format: "json",
         }
       )
-
-      const {ok,status,statusText} = response
-      this.#updateCookies(response.headers)
-
-      Valid.assert(
-        ok,
-        `HTTP error! status: ${status} - ${statusText}`
-      )
-
-      const json = await response.json()
 
       const result = json?.login?.result
       Valid.assert(
@@ -104,14 +92,66 @@ export default class MediaWikiUploader {
         `Login failed: ${json.login?.reason || "Unknown error"}`
       )
 
-      this.#csrftoken = await this.#getCsrfToken()
+      // Pre-fetch and cache CSRF token
+      await this.#getCsrfToken()
 
-      return this
+      return {ok: true}
     } catch (error) {
       return {
         ok: false,
         error
       }
+    }
+  }
+
+  /**
+   * Get or fetch a token of specified type
+   *
+   * @param {string} [type] - Token type (login, watch, patrol, etc.) Defaults to csrf
+   * @param {boolean} [useOverride] - Whether to use login check override
+   * @private
+   * @returns {Promise<string>} Token value
+   */
+  async #getToken(type="csrf", useOverride=false) {
+    // Check cache first
+    if(this.#tokenCache.has(type))
+      return this.#tokenCache.get(type)
+
+    try {
+      if(useOverride)
+        this.#overrideLoginCheck = Symbol(`${type} token fetch`)
+
+      const params = {
+        action: "query",
+        meta: "tokens",
+        format: "json"
+      }
+
+      // Add type param if not csrf (csrf is default)
+      if(type !== "csrf")
+        params.type = type
+
+      const json = await this.get(
+        "api.php",
+        params,
+        useOverride ? this.#overrideLoginCheck : null
+      )
+
+      // Token key format: "logintok" + "en" = logintoken, "csrf" + "token" = csrftoken
+      const tokenKey = type === "csrf" ? "csrftoken" : `${type}token`
+      const token = json?.query?.tokens?.[tokenKey]
+
+      Valid.assert(
+        !!token,
+        `Unexpected ${type} token response structure: ${JSON.stringify(json)}`
+      )
+
+      // Cache the token
+      this.#tokenCache.set(type, token)
+
+      return token
+    } catch (error) {
+      throw Sass.new(`Error fetching ${type} token.`, error)
     }
   }
 
@@ -122,24 +162,7 @@ export default class MediaWikiUploader {
    * @returns {Promise<string>} Login token
    */
   async #getLoginToken() {
-    const baseUrl = this.#baseUrl
-    const response = await fetch(`${baseUrl}/${tokenPath}`)
-
-    const {ok,status,statusText} = response
-    Valid.assert(ok, `HTTP error! status: ${status} - ${statusText}`)
-
-    this.#updateCookies(response.headers)
-
-    const json = await response.json()
-    const token = json?.query?.tokens?.logintoken
-
-    // Check if we have the expected data structure
-    Valid.assert(
-      !!token,
-      `Unexpected login token response structure: ${JSON.stringify(json)}`
-    )
-
-    return token
+    return await this.#getToken("login", true)
   }
 
   /**
@@ -149,22 +172,20 @@ export default class MediaWikiUploader {
    * @returns {Promise<string>} CSRF token
    */
   async #getCsrfToken() {
-    const response = await this.get(editTokenPath)
-    const json = await response.json()
-    const token = json?.query?.tokens?.csrftoken || {}
-
-    Valid.assert(!!token, "Invalid token response.")
-
-    return token
+    return await this.#getToken("csrf", true)
   }
 
   /**
    * Validate required configuration before operations
    *
+   * @param {symbol} [override] - Internal override for token fetch
    * @private
    * @throws {Error} When required configuration is missing
    */
-  #validate() {
+  #validate(override=null) {
+    if(this.#overrideLoginCheck === override)
+      return
+
     Valid.assert(!!this.#baseUrl, "Missing baseUrl.")
     Valid.assert(!!this.#botUsername, "Missing botUsername.")
     Valid.assert(!!this.#botPassword, "Missing botPassword.")
@@ -173,12 +194,15 @@ export default class MediaWikiUploader {
   /**
    * Validate authentication state before authenticated operations
    *
+   * @param {symbol} [override] - Internal override for token fetch
    * @private
    * @throws {Error} When not properly authenticated
    */
-  #validateAfterLogin() {
-    Valid.assert(!!this.#loginToken, "Not logged in.")
-    Valid.assert(!!this.#csrftoken, "Not logged in.")
+  #validateAfterLogin(override) {
+    if(this.#overrideLoginCheck === override)
+      return
+
+    Valid.assert(this.#tokenCache.has("login"), "Not logged in.")
     Valid.assert(this.#cookies.length > 0, "Not logged in.")
   }
 
@@ -186,10 +210,9 @@ export default class MediaWikiUploader {
    * Clear authentication state and logout
    */
   logout() {
-    // Clear cookies to logout
+    // Clear cookies and token cache
     this.#cookies = []
-    this.#loginToken = null
-    this.#csrftoken = null
+    this.#tokenCache.clear()
   }
 
   /**
@@ -210,8 +233,35 @@ export default class MediaWikiUploader {
     const headers = this.#getHeaders()
 
     const body = new FormData()
-    for(const [k,v] of Object.entries(data))
-      body.append(k, String(v))
+    for(const [k,v] of Object.entries(data)) {
+      switch(Data.typeOf(v)) {
+        case "Blob":
+          body.append(k, v)
+          break
+
+        case "FileObject": {
+          const content = await v.read(null)
+          const blob = new Blob([content])
+          body.append(k, blob, v.name)
+          break
+        }
+
+        default:
+          body.append(k, String(v))
+          break
+      }
+    }
+
+    // Determine token type from action
+    // Most actions use their name as token type, but common write actions use csrf
+    const action = data.action
+    const csrfActions = ["edit", "upload", "move", "delete", "protect", "undelete", "block", "unblock", "rollback", "login"]
+    const tokenType = csrfActions.includes(action) ? "csrf" : action
+
+    // Get token (will use cache if available)
+    const token = await this.#getToken(tokenType)
+    body.delete("token")
+    body.append("token", token)
 
     const response = await fetch(url, {method,headers,body})
 
@@ -219,31 +269,44 @@ export default class MediaWikiUploader {
     Valid.assert(ok, `HTTP error! status: ${status} - ${statusText}`)
     this.#updateCookies(response.headers)
 
-    return await response
+    return await response.json()
   }
 
   /**
    * Perform GET request to MediaWiki API
    *
    * @param {string} path - API endpoint path
+   * @param {object} [params] - Query parameters object
+   * @param {symbol} [override] - Internal override for CSRF token fetch
    * @returns {Promise<Response>} Fetch response object
    * @throws {Error} When request fails
    */
-  async get(path) {
+  async get(path, params=null, override=null) {
     this.#validate()
 
-    this.#private && this.#validateAfterLogin()
+    this.#private && this.#validateAfterLogin(override)
+    this.#overrideLoginCheck = null
 
     const url = new URL(path, this.#baseUrl)
+
+    // Add query parameters if params is an object
+    if(Data.isPlainObject(params)) {
+      for(const [k,v] of Object.entries(params)) {
+        url.searchParams.append(k, String(v))
+      }
+    }
+
     const method = METHODS.GET
     const headers = this.#getHeaders()
     const response = await fetch(url, {method,headers})
 
     const {ok,status,statusText} = response
+
     Valid.assert(ok, `HTTP error! status: ${status} - ${statusText}`)
+
     this.#updateCookies(response.headers)
 
-    return await response
+    return await response.json()
   }
 
   /**

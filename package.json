@@ -1,7 +1,7 @@
 {
-  "name": "@gesslar/wiki-your-media",
+  "name": "@gesslar/wikid",
   "version": "1.0.2",
-  "description": "If Salt'n'Pepa wrote a MediaWiki auth and util package in Node.js",
+  "description": "If Salt'n'Pepa wrote a MediaWiki auth package in Node.js",
   "type": "module",
   "main": "./src/index.js",
   "module": "./src/index.js",
@@ -17,7 +17,7 @@
   ],
   "scripts": {
     "dev": "node src/index.js",
-    "test": "node tests/unit/MediaWikiUploader.test.js && node tests/unit/utils.test.js",
+    "test": "node tests/unit/Wikid.test.js",
     "types:build": "tsc -p tsconfig.types.json",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
@@ -29,6 +29,7 @@
     "major": "npm version major"
   },
   "keywords": [
+    "mediawiki",
     "wiki",
     "media",
     "utilities",
@@ -42,11 +43,11 @@
   "license": "Unlicense",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gesslar/wiki-your-media.git"
+    "url": "git+https://github.com/gesslar/wikid.git"
   },
-  "homepage": "https://github.com/gesslar/wiki-your-media#readme",
+  "homepage": "https://github.com/gesslar/wikid#readme",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
