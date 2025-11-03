@@ -1,6 +1,6 @@
 {
   "name": "@gesslar/wikid",
-  "version": "2.0.3",
+  "version": "2.1.0",
   "description": "If Salt'n'Pepa wrote a MediaWiki auth package in Node.js",
   "type": "module",
   "main": "./src/index.js",
@@ -50,12 +50,12 @@
     "node": ">=20.0.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.0.0",
-    "@stylistic/eslint-plugin": "^2.0.0",
-    "@types/node": "^24.9.2",
-    "eslint": "^9.0.0",
-    "eslint-plugin-jsdoc": "^50.0.0",
-    "globals": "^15.0.0"
+    "@eslint/js": "^9.39.0",
+    "@stylistic/eslint-plugin": "^5.5.0",
+    "@types/node": "^24.10.0",
+    "eslint": "^9.39.0",
+    "eslint-plugin-jsdoc": "^61.1.12",
+    "globals": "^16.5.0"
   },
   "dependencies": {
     "@gesslar/toolkit": "^0.7.0",
