@@ -106,15 +106,15 @@ Why? It forces better inference, keeps the emitted declarations stable, and avoi
 
 Add more detailed JSDoc (overloads, generics via `@template`, etc.) directly in the JS source. Re-run `npm run types:build` and the declarations will pick it up automatically.
 
-### **Step 4: Check the Bundle Exports**
+### **Step 4: Verify Type Exports**
 
 Because `tsc` reads `src/index.js`, any new export automatically shows up in `src/types/index.d.ts` after you run `npm run types:build`. Double-check that:
 
 - Your new class is exported from `src/index.js` (Step 2).
-- The regenerated `src/types/index.d.ts` now re-exports it from `./lib/...`.
+- The regenerated `src/types/index.d.ts` now exports it.
 - The matching `.d.ts.map` exists so F12 lands in the JS source.
 
-If something’s missing, it usually means the class wasn’t exported from `src/index.js` or the JSDoc left TypeScript guessing. Fix the source, rerun the build, done.
+If something's missing, it usually means the class wasn't exported from `src/index.js` or the JSDoc left TypeScript guessing. Fix the source, rerun the build, done.
 
 ### **Step 5: Write Comprehensive Tests**
 
