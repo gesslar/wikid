@@ -33,20 +33,20 @@ export default class Wikid {
      *
      * @param {string} path - API endpoint path
      * @param {object} data - Form data to send
-     * @returns {Promise<Response>} Fetch response object
+     * @returns {Promise<object>} Parsed JSON response from MediaWiki API
      * @throws {Error} When request fails or data is invalid
      */
-    post(path: string, data: object): Promise<Response>;
+    post(path: string, data: object): Promise<object>;
     /**
      * Perform GET request to MediaWiki API
      *
      * @param {string} path - API endpoint path
      * @param {object} [params] - Query parameters object
      * @param {symbol} [override] - Internal override for CSRF token fetch
-     * @returns {Promise<Response>} Fetch response object
+     * @returns {Promise<object>} Parsed JSON response from MediaWiki API
      * @throws {Error} When request fails
      */
-    get(path: string, params?: object, override?: symbol): Promise<Response>;
+    get(path: string, params?: object, override?: symbol): Promise<object>;
     #private;
 }
 //# sourceMappingURL=Wikid.d.ts.map

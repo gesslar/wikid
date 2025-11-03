@@ -30,11 +30,20 @@ const METHODS = Object.freeze({
   GET: "GET",
 })
 
+const notCrsfActions = new Set(
+  "createaccount",
+  "login",
+  "patrol",
+  "rollback",
+  "userrights",
+  "watch"
+)
+
 export default class Wikid {
   #baseUrl
   #botUsername
   #botPassword
-  #cookies = []
+  #cookies = new Map()
   #tokenCache = new Map()
   #private
   #overrideLoginCheck
@@ -113,6 +122,9 @@ export default class Wikid {
    * @returns {Promise<string>} Token value
    */
   async #getToken(type="csrf", useOverride=false) {
+    // Figure out the kind of token
+    type = notCrsfActions.has(type) ? "csrf" : type
+
     // Check cache first
     if(this.#tokenCache.has(type))
       return this.#tokenCache.get(type)
@@ -124,12 +136,9 @@ export default class Wikid {
       const params = {
         action: "query",
         meta: "tokens",
-        format: "json"
+        format: "json",
+        type
       }
-
-      // Add type param if not csrf (csrf is default)
-      if(type !== "csrf")
-        params.type = type
 
       const json = await this.get(
         "api.php",
@@ -138,7 +147,7 @@ export default class Wikid {
       )
 
       // Token key format: "logintok" + "en" = logintoken, "csrf" + "token" = csrftoken
-      const tokenKey = type === "csrf" ? "csrftoken" : `${type}token`
+      const tokenKey = `${type}token`
       const token = json?.query?.tokens?.[tokenKey]
 
       Valid.assert(
@@ -203,7 +212,7 @@ export default class Wikid {
       return
 
     Valid.assert(this.#tokenCache.has("login"), "Not logged in.")
-    Valid.assert(this.#cookies.length > 0, "Not logged in.")
+    Valid.assert(this.#cookies.size > 0, "Not logged in.")
   }
 
   /**
@@ -211,7 +220,7 @@ export default class Wikid {
    */
   logout() {
     // Clear cookies and token cache
-    this.#cookies = []
+    this.#cookies.clear()
     this.#tokenCache.clear()
   }
 
@@ -220,7 +229,7 @@ export default class Wikid {
    *
    * @param {string} path - API endpoint path
    * @param {object} data - Form data to send
-   * @returns {Promise<Response>} Fetch response object
+   * @returns {Promise<object>} Parsed JSON response from MediaWiki API
    * @throws {Error} When request fails or data is invalid
    */
   async post(path, data) {
@@ -230,7 +239,8 @@ export default class Wikid {
 
     const url = new URL(path, this.#baseUrl)
     const method = METHODS.POST
-    const headers = this.#getHeaders()
+    const headers = new Headers()
+    headers.set("Cookie", this.#getCookieHeader())
 
     const body = new FormData()
     for(const [k,v] of Object.entries(data)) {
@@ -255,19 +265,23 @@ export default class Wikid {
     // Determine token type from action
     // Most actions use their name as token type, but common write actions use csrf
     const action = data.action
-    const csrfActions = ["edit", "upload", "move", "delete", "protect", "undelete", "block", "unblock", "rollback", "login"]
-    const tokenType = csrfActions.includes(action) ? "csrf" : action
+    const tokenType = notCrsfActions.has(action) ? action : "csrf"
 
     // Get token (will use cache if available)
-    const token = await this.#getToken(tokenType)
+    // Except for 'login'
+    const token = data.action === "login"
+      ? null
+      : await this.#getToken(tokenType)
+
     body.delete("token")
-    body.append("token", token)
+    if(token)
+      body.append("token", token)
 
     const response = await fetch(url, {method,headers,body})
 
     const {ok,status,statusText} = response
     Valid.assert(ok, `HTTP error! status: ${status} - ${statusText}`)
-    this.#updateCookies(response.headers)
+    this.#updateCookies(response.headers.get("set-cookie"))
 
     return await response.json()
   }
@@ -278,7 +292,7 @@ export default class Wikid {
    * @param {string} path - API endpoint path
    * @param {object} [params] - Query parameters object
    * @param {symbol} [override] - Internal override for CSRF token fetch
-   * @returns {Promise<Response>} Fetch response object
+   * @returns {Promise<object>} Parsed JSON response from MediaWiki API
    * @throws {Error} When request fails
    */
   async get(path, params=null, override=null) {
@@ -291,20 +305,21 @@ export default class Wikid {
 
     // Add query parameters if params is an object
     if(Data.isPlainObject(params)) {
-      for(const [k,v] of Object.entries(params)) {
+      for(const [k,v] of Object.entries(params))
         url.searchParams.append(k, String(v))
-      }
     }
 
     const method = METHODS.GET
-    const headers = this.#getHeaders()
+    const headers = new Headers()
+    headers.set("Cookie", this.#getCookieHeader())
+
     const response = await fetch(url, {method,headers})
 
     const {ok,status,statusText} = response
 
     Valid.assert(ok, `HTTP error! status: ${status} - ${statusText}`)
 
-    this.#updateCookies(response.headers)
+    this.#updateCookies(response.headers.get("set-cookie"))
 
     return await response.json()
   }
@@ -313,14 +328,28 @@ export default class Wikid {
    * Update cookie store from response headers
    *
    * @private
-   * @param {Headers} headers - Response headers containing cookies
+   * @param {string|Array<string>} setCookieHeaders - Set-Cookie header value(s) from response
    */
-  #updateCookies(headers) {
-    const newCookies = headers.get("set-cookie")
+  #updateCookies(setCookieHeaders) {
+    if(!setCookieHeaders)
+      return
 
-    if(newCookies)
-      // Split multiple cookies and add them to our cookie store
-      this.#cookies = newCookies.split(",").map(cookie => cookie.split(";")[0].trim())
+    const headers = Array.isArray(setCookieHeaders)
+      ? setCookieHeaders
+      : [setCookieHeaders]
+
+    for(const header of headers) {
+    // Parse: "name=value; Path=/; Expires=..."
+      const [nameValue] = header.split(";")
+      const [name, value] = nameValue.split("=")
+
+      if(value) {
+        this.#cookies.set(name.trim(), value.trim())
+      } else {
+      // Empty value = delete cookie
+        this.#cookies.delete(name.trim())
+      }
+    }
   }
 
   /**
@@ -329,12 +358,9 @@ export default class Wikid {
    * @private
    * @returns {Headers} Headers object with cookies
    */
-  #getHeaders() {
-    const headers = new Headers()
-
-    if(this.#cookies.length > 0)
-      headers.set("Cookie", this.#cookies.join("; "))
-
-    return headers
+  #getCookieHeader() {
+    return Array.from(this.#cookies.entries())
+      .map(([name, value]) => `${name}=${value}`)
+      .join("; ")
   }
 }

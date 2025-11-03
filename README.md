@@ -29,18 +29,34 @@ const wikid = new Wikid({
 // Login (uses credentials from constructor)
 await wikid.login();
 
-// Make authenticated API calls
+// Make authenticated POST requests
 const result = await wikid.post('api.php', {
-  action: 'query',
-  meta: 'tokens'
+  action: 'edit',
+  title: 'Page Title',
+  text: 'Page content',
+  summary: 'Edit summary'
 });
 
-// Get requests
+// Make GET requests
 const pageData = await wikid.get('api.php', {
   action: 'query',
-  titles: 'Main Page'
+  titles: 'Main Page',
+  prop: 'revisions',
+  rvprop: 'content'
 });
+
+// Logout when done
+wikid.logout();
 ```
+
+## Features
+
+- **Bot authentication** with MediaWiki bot passwords
+- **Automatic token management** - CSRF tokens are fetched once and cached
+- **Cookie-based session handling** - Sessions persist across requests
+- **Private wiki support** - Optional authentication for read operations
+- **Clean error handling** - Returns structured error objects
+- **ESM-only** - Modern JavaScript modules
 
 ## API Reference
 
@@ -63,21 +79,65 @@ new Wikid(options)
 
 Authenticate with MediaWiki using credentials from constructor.
 
+**Returns:** `Promise<{ok: boolean, error?: Error}>`
+
+```javascript
+const result = await wikid.login();
+if (!result.ok) {
+  console.error('Login failed:', result.error);
+}
+```
+
 ##### `logout()`
 
-End the authenticated session.
+Clear authentication state and end the session. Safe to call multiple times.
 
-##### `post(endpoint, params)`
+```javascript
+wikid.logout();
+```
 
-Make authenticated POST requests to MediaWiki API.
+##### `post(path, data)`
 
-##### `get(endpoint, params)`
+Make authenticated POST requests to MediaWiki API. Automatically handles token management.
 
-Make authenticated GET requests to MediaWiki API.
+**Parameters:**
+- `path` (string) - API endpoint path (usually `'api.php'`)
+- `data` (object) - Request parameters as plain object
 
-##### `uploadFile(filePath, options)`
+**Returns:** `Promise<object>` - Parsed JSON response from MediaWiki
 
-Upload files to MediaWiki with metadata.
+```javascript
+const response = await wikid.post('api.php', {
+  action: 'edit',
+  title: 'Test Page',
+  text: 'Content',
+  summary: 'Edit summary'
+});
+```
+
+**Automatic Token Management:**
+- CSRF tokens are automatically fetched and cached during login
+- Tokens are reused for all subsequent requests
+- Different token types (csrf, patrol, rollback, etc.) are handled automatically based on the action
+
+##### `get(path, params)`
+
+Make GET requests to MediaWiki API.
+
+**Parameters:**
+- `path` (string) - API endpoint path (usually `'api.php'`)
+- `params` (object, optional) - Query parameters as plain object
+
+**Returns:** `Promise<object>` - Parsed JSON response from MediaWiki
+
+```javascript
+const response = await wikid.get('api.php', {
+  action: 'query',
+  titles: 'Main Page',
+  prop: 'revisions',
+  rvprop: 'content'
+});
+```
 
 ## Development
 
